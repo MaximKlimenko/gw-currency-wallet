@@ -1,13 +1,15 @@
 package storages
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
-	ID        int64
-	Name      string
-	Email     string
-	Password  string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Password  string    `gorm:"column:password_hash"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Wallet struct {
@@ -16,14 +18,4 @@ type Wallet struct {
 	Currency  string
 	Balance   float64
 	CreatedAt time.Time
-}
-
-type Transaction struct {
-	ID              int64     `json:"id"`
-	UserID          int64     `json:"user_id"`
-	WalletID        int64     `json:"wallet_id"`
-	Amount          float64   `json:"amount"`
-	TransactionType string    `json:"transaction_type"`
-	Description     string    `json:"description"`
-	CreatedAt       time.Time `json:"created_at"`
 }

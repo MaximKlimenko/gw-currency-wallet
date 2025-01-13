@@ -1,33 +1,27 @@
 package postgres
 
 import (
-	"database/sql"
 	"fmt"
 
+	"github.com/MaximKlimenko/gw-currency-wallet/internal/config"
 	_ "github.com/MaximKlimenko/proto-exchange/exchange"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type Connector struct {
-	DB *sql.DB
+	DB *gorm.DB
 }
 
-func NewConnector(host, port, user, password, dbname string) (*Connector, error) {
+func NewConnector(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname,
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
 	)
-	db, err := sql.Open("postgres", dsn)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	return &Connector{DB: db}, nil
-}
-
-func (c *Connector) Close() error {
-	return c.DB.Close()
+	return db, nil
 }
