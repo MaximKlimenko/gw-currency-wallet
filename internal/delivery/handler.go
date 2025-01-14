@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/storages"
-	"github.com/MaximKlimenko/gw-currency-wallet/pkg/exchange"
+	"github.com/MaximKlimenko/gw-currency-wallet/pkg/grpc/exchanger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -227,9 +227,9 @@ func (r *Repository) GetExchangeRates(ctx *fiber.Ctx) error {
 	}
 	defer conn.Close()
 
-	exchanger := exchange.NewExchangerClient(conn)
+	client := exchanger.NewExchangerClient(conn)
 
-	rates, err := exchanger.GetExchangeRates()
+	rates, err := client.GetExchangeRates()
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to retrieve exchange rates",
