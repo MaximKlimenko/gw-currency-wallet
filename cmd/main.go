@@ -17,7 +17,7 @@ func main() {
 		log.Fatal("\033[31mcould not load the database\033[0m")
 	}
 
-	pgrep := postgres.NewPostgresStorage(cnt)
+	pgrep := postgres.NewPostgresStorage(cnt, cfg)
 
 	r := delivery.Repository{
 		DB: pgrep,

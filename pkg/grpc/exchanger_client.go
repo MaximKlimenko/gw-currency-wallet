@@ -1,4 +1,4 @@
-package grpc
+package exchange
 
 import (
 	"context"
@@ -27,4 +27,12 @@ func (e *ExchangerClient) GetExchangeRate(from, to string) (float64, error) {
 		return 0, err
 	}
 	return float64(resp.Rate), nil
+}
+
+func (e *ExchangerClient) GetExchangeRates() (map[string]float32, error) {
+	resp, err := e.client.GetExchangeRates(context.Background(), &pb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Rates, nil
 }

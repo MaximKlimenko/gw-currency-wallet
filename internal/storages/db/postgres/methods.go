@@ -17,9 +17,14 @@ type PostgresStorage struct {
 	Config *config.Config
 }
 
-func NewPostgresStorage(conn *Connector) *PostgresStorage {
-	return &PostgresStorage{conn: conn}
+func NewPostgresStorage(conn *Connector, config *config.Config) *PostgresStorage {
+	return &PostgresStorage{
+		conn:   conn,
+		Config: config,
+	}
 }
+
+//----- User -----
 
 func (s *PostgresStorage) CreateUser(user *storages.User) error {
 	user.CreatedAt = time.Now()
@@ -53,9 +58,67 @@ func (s *PostgresStorage) ExistingUser(username, email string) bool {
 	return false
 }
 
+//----- Wallet -----
+
 func (s *PostgresStorage) CreateWallet(wallet *storages.Wallet) error {
 	return s.conn.DB.Create(wallet).Error
 }
+
+func (s *PostgresStorage) GetBalanceByUsername(username string) (*storages.Wallet, error) {
+	var user *storages.User
+	if err := s.conn.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("user not found: %s", username)
+		}
+		return nil, fmt.Errorf("failed to find user: %v", err)
+	}
+
+	var wallet *storages.Wallet
+	if err := s.conn.DB.Where("user_id = ?", user.ID).First(&wallet).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("wallet not found for user: %s", username)
+		}
+		return nil, fmt.Errorf("failed to get wallet balance: %v", err)
+	}
+
+	return wallet, nil
+}
+func (s *PostgresStorage) ChangeBalance(amount float64, currency, username string) (*storages.Wallet, error) {
+	var user storages.User
+	if err := s.conn.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("user not found: %s", username)
+		}
+		return nil, fmt.Errorf("failed to find user: %v", err)
+	}
+
+	var wallet storages.Wallet
+	if err := s.conn.DB.Where("user_id = ?", user.ID).First(&wallet).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("wallet not found for user: %s", username)
+		}
+		return nil, fmt.Errorf("failed to find wallet: %v", err)
+	}
+
+	switch currency {
+	case "USD":
+		wallet.USD += amount
+	case "RUB":
+		wallet.RUB += amount
+	case "EUR":
+		wallet.EUR += amount
+	default:
+		return nil, fmt.Errorf("unsupported currency: %s", currency)
+	}
+
+	if err := s.conn.DB.Save(&wallet).Error; err != nil {
+		return nil, fmt.Errorf("failed to update wallet: %v", err)
+	}
+
+	return &wallet, nil
+}
+
+//----- JWT -----
 
 func (s *PostgresStorage) CreateJWTToken(username string) (string, error) {
 	// Настраиваем параметры токена

@@ -1,12 +1,23 @@
 package delivery
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/storages"
+	"github.com/MaximKlimenko/gw-currency-wallet/pkg/exchange"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc"
 )
+
+type DepositRequest struct {
+	Amount   float64 `json:"amount"`
+	Currency string  `json:"currency"`
+}
 
 func (r *Repository) Register(ctx *fiber.Ctx) error {
 	var input struct {
@@ -113,17 +124,154 @@ func (r *Repository) Login(ctx *fiber.Ctx) error {
 }
 
 func (r *Repository) GetBalance(ctx *fiber.Ctx) error {
-	return nil
+	username, err := getUsernameFromJWT(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err,
+		})
+	}
+
+	wal, err := r.DB.GetBalanceByUsername(username)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Something went wrong",
+		})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"USD": wal.USD,
+		"RUB": wal.RUB,
+		"EUR": wal.EUR,
+	})
 }
 func (r *Repository) DepositBalance(ctx *fiber.Ctx) error {
-	return nil
+	username, err := getUsernameFromJWT(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err,
+		})
+	}
+
+	var depositReq DepositRequest
+	if err := ctx.BodyParser(&depositReq); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request format",
+		})
+	}
+
+	if depositReq.Amount <= 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid amount or currency",
+		})
+	}
+
+	updatedWallet, err := r.DB.ChangeBalance(depositReq.Amount, depositReq.Currency, username)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Invalid amount or currency",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Account topped up successfully",
+		"wallet": fiber.Map{
+			"USD": updatedWallet.USD,
+			"RUB": updatedWallet.RUB,
+			"EUR": updatedWallet.EUR,
+		},
+	})
 }
 func (r *Repository) WithdrawBalance(ctx *fiber.Ctx) error {
-	return nil
+	username, err := getUsernameFromJWT(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err,
+		})
+	}
+
+	var depositReq DepositRequest
+	if err := ctx.BodyParser(&depositReq); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request format",
+		})
+	}
+
+	if depositReq.Amount <= 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Insufficient funds or invalid amount",
+		})
+	}
+
+	updatedWallet, err := r.DB.ChangeBalance(-1*depositReq.Amount, depositReq.Currency, username) //Таже самая функция, только amount * -1
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Insufficient funds or invalid amount",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Withdrawal successful",
+		"wallet": fiber.Map{
+			"USD": updatedWallet.USD,
+			"RUB": updatedWallet.RUB,
+			"EUR": updatedWallet.EUR,
+		},
+	})
 }
+
 func (r *Repository) GetExchangeRates(ctx *fiber.Ctx) error {
-	return nil
+	conn, err := grpc.Dial("your_grpc_service_address:50051", grpc.WithInsecure())
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to connect to exchange service",
+		})
+	}
+	defer conn.Close()
+
+	exchanger := exchange.NewExchangerClient(conn)
+
+	rates, err := exchanger.GetExchangeRates()
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve exchange rates",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"rates": rates,
+	})
 }
 func (r *Repository) GetExchange(ctx *fiber.Ctx) error {
 	return nil
+}
+
+func getUsernameFromJWT(ctx *fiber.Ctx) (string, error) {
+	authHeader := ctx.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("Authorization token is required")
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == "" {
+		return "", fmt.Errorf("Invalid token format")
+	}
+
+	claims := &struct {
+		Username string `json:"username"`
+		jwt.RegisteredClaims
+	}{}
+
+	secretKey := []byte("qwerty")
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Проверка, что алгоритм токена правильный
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return secretKey, nil
+	})
+	if err != nil || !token.Valid {
+		return "", fmt.Errorf("Invalid or expired token")
+	}
+
+	return claims.Username, nil
 }
