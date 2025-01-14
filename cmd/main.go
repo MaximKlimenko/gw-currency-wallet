@@ -12,13 +12,15 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 
-	db, err := postgres.NewConnector(cfg)
+	cnt, err := postgres.NewConnector(cfg)
 	if err != nil {
 		log.Fatal("\033[31mcould not load the database\033[0m")
 	}
 
+	pgrep := postgres.NewPostgresStorage(cnt)
+
 	r := delivery.Repository{
-		DB: db,
+		DB: pgrep,
 	}
 
 	app := fiber.New()

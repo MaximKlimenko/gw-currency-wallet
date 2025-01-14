@@ -13,9 +13,9 @@ type User struct {
 }
 
 type Wallet struct {
-	ID        int64
-	UserID    int64
-	Currency  string
-	Balance   float64
-	CreatedAt time.Time
+	ID     int64
+	UserID int64
+	USD    float64
+	RUB    float64
+	EUR    float64
 }

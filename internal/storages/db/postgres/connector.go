@@ -13,7 +13,7 @@ type Connector struct {
 	DB *gorm.DB
 }
 
-func NewConnector(cfg *config.Config) (*gorm.DB, error) {
+func NewConnector(cfg *config.Config) (*Connector, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
@@ -22,6 +22,9 @@ func NewConnector(cfg *config.Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	cnt := &Connector{
+		DB: db,
+	}
 
-	return db, nil
+	return cnt, nil
 }

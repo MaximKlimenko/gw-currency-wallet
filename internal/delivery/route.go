@@ -1,12 +1,12 @@
 package delivery
 
 import (
+	"github.com/MaximKlimenko/gw-currency-wallet/internal/storages"
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 )
 
 type Repository struct {
-	DB *gorm.DB
+	DB storages.Storage
 }
 
 func (r *Repository) SetupRoutes(app *fiber.App) {

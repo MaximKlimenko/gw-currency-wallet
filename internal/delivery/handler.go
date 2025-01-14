@@ -50,14 +50,68 @@ func (r *Repository) Register(ctx *fiber.Ctx) error {
 		})
 	}
 
+	// Создаём кошелёк с нулевым балансом для нового пользователя
+	newWallet := &storages.Wallet{
+		UserID: newUser.ID, // Привязываем кошелёк к ID пользователя
+		USD:    0.0,        // Начальный баланс в долларах
+		RUB:    0.0,        // Начальный баланс в рублях
+		EUR:    0.0,        // Начальный баланс в евро
+	}
+
+	// Сохраняем кошелёк в базе данных
+	if err := r.DB.CreateWallet(newWallet); err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Ошибка при создании кошелька",
+		})
+	}
+
 	// Возвращаем успешный ответ
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "User registered successfully",
 	})
 }
 func (r *Repository) Login(ctx *fiber.Ctx) error {
-	return nil
+	var input struct {
+		Username string `json:"username"`
+		Password string `json:"password_hash"`
+	}
+
+	if err := ctx.BodyParser(&input); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Неверный формат входных данных",
+		})
+	}
+
+	oldUser := &storages.User{
+		Username: input.Username,
+		Password: input.Password, //Нет необходимости хэшировать пароль, так как в методе AuthenticateUser происходит сравнение хэша из бд и пароля
+	}
+
+	authenticated, err := r.DB.AuthenticateUser(oldUser)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Ошибка авторизации",
+		})
+	}
+
+	if !authenticated {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Invalid username or password",
+		})
+	}
+
+	token, err := r.DB.CreateJWTToken(oldUser.Username)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Could not create token",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"token": token,
+	})
 }
+
 func (r *Repository) GetBalance(ctx *fiber.Ctx) error {
 	return nil
 }
