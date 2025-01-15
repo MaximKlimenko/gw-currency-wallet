@@ -2,6 +2,7 @@ package exchanger
 
 import (
 	"context"
+	"fmt"
 
 	pb "github.com/MaximKlimenko/proto-exchange/exchange"
 
@@ -24,15 +25,20 @@ func (e *ExchangerClient) GetExchangeRate(from, to string) (float64, error) {
 		ToCurrency:   to,
 	})
 	if err != nil {
+
 		return 0, err
 	}
 	return float64(resp.Rate), nil
 }
 
 func (e *ExchangerClient) GetExchangeRates() (map[string]float32, error) {
+	// Выполняем gRPC-запрос с указанной валютой
 	resp, err := e.client.GetExchangeRates(context.Background(), &pb.Empty{})
 	if err != nil {
+		fmt.Println("Ошибка при запросе курсов валют:", err)
 		return nil, err
 	}
+
+	// Возвращаем курсы валют
 	return resp.Rates, nil
 }

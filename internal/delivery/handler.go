@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MaximKlimenko/gw-currency-wallet/internal/grpc/exchanger"
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/storages"
+	"github.com/MaximKlimenko/gw-currency-wallet/pkg/grpc/exchanger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -17,6 +17,11 @@ import (
 type DepositRequest struct {
 	Amount   float64 `json:"amount"`
 	Currency string  `json:"currency"`
+}
+type ExchangeRequest struct {
+	FromCurrency string  `json:"from_currency"`
+	ToCurrency   string  `json:"to_currency"`
+	Amount       float64 `json:"amount"`
 }
 
 func (r *Repository) Register(ctx *fiber.Ctx) error {
@@ -218,8 +223,8 @@ func (r *Repository) WithdrawBalance(ctx *fiber.Ctx) error {
 	})
 }
 
-func (r *Repository) GetExchangeRates(ctx *fiber.Ctx) error {
-	conn, err := grpc.Dial("your_grpc_service_address:50051", grpc.WithInsecure())
+func (r *Repository) GetExchangeRates(ctx *fiber.Ctx) error { // Пока-что метод выводит вообще все курсы валют, хранящихся в бд
+	conn, err := grpc.NewClient("localhost:50051", grpc.WithInsecure())
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to connect to exchange service",
@@ -240,19 +245,79 @@ func (r *Repository) GetExchangeRates(ctx *fiber.Ctx) error {
 		"rates": rates,
 	})
 }
+
 func (r *Repository) GetExchange(ctx *fiber.Ctx) error {
-	return nil
+	conn, err := grpc.NewClient("localhost:50051", grpc.WithInsecure())
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to connect to exchange service",
+		})
+	}
+	defer conn.Close()
+
+	username, err := getUsernameFromJWT(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err,
+		})
+	}
+
+	var exchangeReq ExchangeRequest
+	if err := ctx.BodyParser(&exchangeReq); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request format",
+		})
+	}
+	if exchangeReq.Amount <= 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Insufficient funds or invalid amount",
+		})
+	}
+
+	client := exchanger.NewExchangerClient(conn)
+	fmt.Println(exchangeReq)
+	rate, err := client.GetExchangeRate(exchangeReq.FromCurrency, exchangeReq.ToCurrency)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve exchange rates",
+			"err":   err,
+		})
+	}
+
+	changedBalance, err := r.DB.ChangeBalance(-1*exchangeReq.Amount, exchangeReq.FromCurrency, username)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Insufficient funds or invalid amount",
+		})
+	}
+
+	changedBalance, err = r.DB.ChangeBalance(exchangeReq.Amount*rate, exchangeReq.ToCurrency, username) // Так делать плохо, если вылезет ошибка, то с баланса снимутся деньги, но не зачислятся
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Insufficient funds or invalid amount",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message":          "Exchange successful",
+		"exchanged_amount": exchangeReq.Amount * rate,
+		"new_balance": fiber.Map{
+			"USD": changedBalance.USD,
+			"RUB": changedBalance.RUB,
+			"EUR": changedBalance.EUR,
+		},
+	})
 }
 
 func getUsernameFromJWT(ctx *fiber.Ctx) (string, error) {
 	authHeader := ctx.Get("Authorization")
 	if authHeader == "" {
-		return "", fmt.Errorf("Authorization token is required")
+		return "", fmt.Errorf("authorization token is required")
 	}
 
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 	if tokenString == "" {
-		return "", fmt.Errorf("Invalid token format")
+		return "", fmt.Errorf("invalid token format")
 	}
 
 	claims := &struct {
@@ -270,7 +335,7 @@ func getUsernameFromJWT(ctx *fiber.Ctx) (string, error) {
 		return secretKey, nil
 	})
 	if err != nil || !token.Valid {
-		return "", fmt.Errorf("Invalid or expired token")
+		return "", fmt.Errorf("invalid or expired token")
 	}
 
 	return claims.Username, nil

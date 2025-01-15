@@ -1,5 +1,5 @@
-github.com/MaximKlimenko/proto-exchange v0.0.0-20241224104859-dbf834891dc3 h1:jVtH+yR/FOEiXVtP1BXR04gpffyA4v25eN6xKiZRtaI=
-github.com/MaximKlimenko/proto-exchange v0.0.0-20241224104859-dbf834891dc3/go.mod h1:lFtVPwrjPLqdOb5Ersb08VAkbBndqch68/uE3Au//qo=
+github.com/MaximKlimenko/proto-exchange v0.0.0-20250115093347-37da417a4ea0 h1:4anvNjLbO2o5RpNvQ6MqRl2FF7qtdftlobk8ywR3rT4=
+github.com/MaximKlimenko/proto-exchange v0.0.0-20250115093347-37da417a4ea0/go.mod h1:lFtVPwrjPLqdOb5Ersb08VAkbBndqch68/uE3Au//qo=
 github.com/andybalholm/brotli v1.1.1 h1:PR2pgnyFznKEugtsUo0xLdDop5SKXd5Qf5ysW+7XdTA=
 github.com/andybalholm/brotli v1.1.1/go.mod h1:05ib4cKhjx3OQYUY22hTVd34Bc8upXjOLL2rKwwZBoA=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

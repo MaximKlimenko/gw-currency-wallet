@@ -17,5 +17,5 @@ func (r *Repository) SetupRoutes(app *fiber.App) {
 	api.Post("/wallet/deposit", r.DepositBalance)
 	api.Post("/wallet/withdraw", r.WithdrawBalance)
 	api.Get("/exchange/rates", r.GetExchangeRates)
-	api.Get("/exchange", r.GetExchange)
+	api.Post("/exchange", r.GetExchange)
 }

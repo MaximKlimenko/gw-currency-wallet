@@ -3,7 +3,7 @@ module github.com/MaximKlimenko/gw-currency-wallet
 go 1.22.0
 
 require (
-	github.com/MaximKlimenko/proto-exchange v0.0.0-20241224104859-dbf834891dc3
+	github.com/MaximKlimenko/proto-exchange v0.0.0-20250115093347-37da417a4ea0
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	golang.org/x/crypto v0.29.0
