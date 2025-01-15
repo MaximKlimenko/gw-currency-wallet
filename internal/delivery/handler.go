@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MaximKlimenko/gw-currency-wallet/internal/grpc/exchanger"
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/storages"
-	"github.com/MaximKlimenko/gw-currency-wallet/pkg/grpc/exchanger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
