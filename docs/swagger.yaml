@@ -1,0 +1,287 @@
+basePath: /api/v1
+definitions:
+  delivery.DepositRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+    type: object
+  delivery.ExchangeRequest:
+    properties:
+      amount:
+        type: number
+      from_currency:
+        type: string
+      to_currency:
+        type: string
+    type: object
+  delivery.LoginUserRequest:
+    properties:
+      password_hash:
+        type: string
+      username:
+        type: string
+    type: object
+  delivery.RegisterUserRequest:
+    properties:
+      email:
+        type: string
+      password_hash:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: max.klim59@gmail.com
+  description: Это описание моего API.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: gw-currency-wallet
+  version: "1.0"
+paths:
+  /balance:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает текущий баланс пользователя по всем валютам
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Баланс по валютам (USD, RUB, EUR)
+          schema:
+            additionalProperties:
+              type: number
+            type: object
+        "401":
+          description: Ошибка авторизации или токен недействителен
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка на стороне сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение баланса пользователя
+      tags:
+      - balance
+  /exchange:
+    post:
+      consumes:
+      - application/json
+      description: Выполняет обмен указанной суммы одной валюты на другую для пользователя
+      parameters:
+      - description: Параметры обмена (сумма, из какой валюты, в какую)
+        in: body
+        name: exchange
+        required: true
+        schema:
+          $ref: '#/definitions/delivery.ExchangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация об успешном обмене и новый баланс
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный запрос или недостаточно средств
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка на стороне сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обмен валюты
+      tags:
+      - exchange
+  /exchange/rates:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех курсов валют, доступных в системе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список курсов валют
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка на стороне сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение курсов валют
+      tags:
+      - exchange
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Авторизация пользователя с помощью JWT токена
+      parameters:
+      - description: Данные пользователя для авторизации
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/delivery.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Токен авторизации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный формат входных данных
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Ошибка авторизации или неверные учетные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера при создании токена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Авторизация старого пользователя
+      tags:
+      - users
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт нового пользователя в системе и инициализирует кошелёк
+        с нулевым балансом
+      parameters:
+      - description: Данные пользователя для регистрации
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/delivery.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный формат входных данных
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Username or email already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка при создании пользователя или кошелька
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Регистрация нового пользователя
+      tags:
+      - users
+  /wallet/Withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Уменьшает указанную сумму на баланс пользователя в выбранной валюте
+      parameters:
+      - description: Сумма и валюта пополнения
+        in: body
+        name: deposit
+        required: true
+        schema:
+          $ref: '#/definitions/delivery.DepositRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об успехе и обновленный баланс
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный запрос или неверная сумма
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка на стороне сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Снятие баланса
+      tags:
+      - balance
+  /wallet/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет указанную сумму на баланс пользователя в выбранной валюте
+      parameters:
+      - description: Сумма и валюта пополнения
+        in: body
+        name: deposit
+        required: true
+        schema:
+          $ref: '#/definitions/delivery.DepositRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об успехе и обновленный баланс
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный запрос или неверная сумма
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка на стороне сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Пополнение баланса
+      tags:
+      - balance
+swagger: "2.0"

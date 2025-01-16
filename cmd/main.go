@@ -1,8 +1,21 @@
+// @title           gw-currency-wallet
+// @version         1.0
+// @description     Это описание моего API.
+
+// @contact.email  max.klim59@gmail.com
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:3000
+// @BasePath  /api/v1
+
 package main
 
 import (
 	"log"
 
+	_ "github.com/MaximKlimenko/gw-currency-wallet/docs"
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/config"
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/delivery"
 	"github.com/MaximKlimenko/gw-currency-wallet/internal/storages/db/postgres"
