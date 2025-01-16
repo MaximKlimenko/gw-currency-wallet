@@ -87,30 +87,24 @@ func TestRegisterUser(t *testing.T) {
 
 	resp, _ := app.Test(req)
 
-	// Проверка
 	assert.Equal(t, fiber.StatusCreated, resp.StatusCode)
 
-	// Проверяем вызовы мока
 	mockDB.AssertExpectations(t)
 }
 
 func TestLogin(t *testing.T) {
-	// Создаем мок
 	mockDB := new(MockStorage)
 	repo := &delivery.Repository{DB: mockDB}
 
-	// Настраиваем мок
 	mockDB.On("AuthenticateUser", &storages.User{
 		Username: "testuser",
 		Password: "password",
 	}).Return(true, nil)
 	mockDB.On("CreateJWTToken", "testuser").Return("mocked_jwt_token", nil)
 
-	// Создаем приложение Fiber
 	app := fiber.New()
 	app.Post("/login", repo.Login)
 
-	// Отправляем запрос
 	requestBody := `{
 		"username": "testuser",
 		"password_hash": "password"
@@ -121,10 +115,8 @@ func TestLogin(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
-	// Проверяем статус ответа
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
 
-	// Проверяем тело ответа
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -132,7 +124,6 @@ func TestLogin(t *testing.T) {
 	expectedResponse := `{"token":"mocked_jwt_token"}`
 	assert.JSONEq(t, expectedResponse, string(body))
 
-	// Проверяем вызовы мока
 	mockDB.AssertExpectations(t)
 }
 
